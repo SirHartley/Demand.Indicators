@@ -1,0 +1,8 @@
+{
+  "graphics": {
+      "ui":{
+        "demandIndicators_commodityExcess":"graphics/ui/commodity_excess.png",
+        "demandIndicators_commodityDeficit":"graphics/ui/commodity_shortage.png"
+      },
+  },
+}

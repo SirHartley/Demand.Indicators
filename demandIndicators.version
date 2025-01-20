@@ -1,0 +1,11 @@
+{
+    "masterVersionFile":"https://raw.githubusercontent.com/SirHartley/Industrial.Evolution/master/IndEvo.version",
+    "modName":"Demand Indicators",
+    "modThreadId":31416,
+    "modVersion":
+    {
+        "major":1,
+        "minor":0,
+        "patch":"b"
+    },
+}
