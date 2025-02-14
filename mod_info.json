@@ -2,8 +2,8 @@
     "id": "demandIndicators",
     "name": "Demand Indicators",
     "author": "SirHartley",
-    "version": "1.0.b",
-    "description": "Adds indicators to the cargo areas showing which commodities have excess or shortages. Original idea by ParrotParrot.",
+    "version": "1.0.c",
+    "description": "Adds indicators to the cargo areas showing which commodities have excess or shortages.",
     "gameVersion": "0.97a",
     "jars":["jars/demandindicators.jar"],
     "modPlugin":"demandindicators.plugins.ModPlugin"

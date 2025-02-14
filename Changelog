@@ -9,6 +9,12 @@ None
 
 --------------------------- Changelog -----------------------------
 
+1.0.c
+Added - Indicators for high purchase volumes
+Added - Indicators for price if there is no shortage/excess
+Added - LunaLib option for low impact mode
+Fixed - Marines got their rank back
+
 1.0.b
 Added - Version Checker
 Added - Icon
