@@ -2,9 +2,13 @@ package demandindicators.listener;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.*;
+import com.fs.starfarer.api.campaign.econ.CommodityMarketDataAPI;
+import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.econ.SubmarketAPI;
 import com.fs.starfarer.api.campaign.listeners.*;
+import com.fs.starfarer.api.impl.PlayerFleetPersonnelTracker;
+import lunalib.lunaSettings.LunaSettings;
 
 import java.awt.*;
 
@@ -25,23 +29,54 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
     }
 
     public String getRankIconName(CargoStackAPI stack) {
-        if (stack.isPickedUp() || stack.isInPlayerCargo() || !stack.isCommodityStack()) return null;
+        if (stack.isPickedUp() || stack.isInPlayerCargo() || !stack.isCommodityStack()) return getDefaultMarineIcon(stack);
         SubmarketAPI submarket = getSubmarketFor(stack);
 
-        if (submarket == null) return null;
-        if (submarket.getPlugin().isFreeTransfer()) return null;
+        if (submarket == null) return getDefaultMarineIcon(stack);
+        if (submarket.getPlugin().isFreeTransfer()) return getDefaultMarineIcon(stack);
 
         MarketAPI m = submarket.getMarket();
 
-        if (m == null) return null;
+        if (m == null) return getDefaultMarineIcon(stack);
 
-        int excess = m .getCommodityData(stack.getCommodityId()).getExcessQuantity();
-        int deficit = m.getCommodityData(stack.getCommodityId()).getDeficitQuantity();
+        CommodityOnMarketAPI data = m.getCommodityData(stack.getCommodityId());
+        int econUnit = Math.round(data.getCommodity().getEconUnit());
 
-        if (excess > 0) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess");
-        if (deficit > 0) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit");
+        int excess = data.getExcessQuantity();
+        int deficit = data.getDeficitQuantity();
 
-        return null;
+        //low vis mode only shows indicators on shortage
+
+        boolean lowVisMode = LunaSettings.getBoolean("demandIndicators", "demandIndicators_lowVis");
+
+        if (lowVisMode){
+            if (excess > 0) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess");
+            if (deficit > 0) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit");
+
+            return getDefaultMarineIcon(stack);
+        }
+
+        //high vis mode shows price guides
+
+        if (excess > 0){
+            if (excess > econUnit) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_high");
+            else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess");
+        }
+
+        if (deficit > 0){
+            if (deficit > econUnit) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_high");
+            else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit");
+        }
+
+        float price = m.getSupplyPrice(stack.getCommodityId(), stack.getSize(), true) / stack.getSize();
+        float defaultPrice = data.getCommodity().getBasePrice();
+
+        if (price > defaultPrice) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_low");
+        else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_low");
+    }
+
+    public String getDefaultMarineIcon(CargoStackAPI stack){
+        return PlayerFleetPersonnelTracker.getInstance().getRankIconName(stack);
     }
 
     public String getIconName(CargoStackAPI stack) {
