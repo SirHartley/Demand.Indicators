@@ -9,6 +9,10 @@ None
 
 --------------------------- Changelog -----------------------------
 
+1.0.d
+Added - Lunalib dependency
+
+
 1.0.c
 Added - Indicators for high purchase volumes
 Added - Indicators for price if there is no shortage/excess

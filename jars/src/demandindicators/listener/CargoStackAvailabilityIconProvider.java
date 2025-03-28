@@ -2,7 +2,6 @@ package demandindicators.listener;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.*;
-import com.fs.starfarer.api.campaign.econ.CommodityMarketDataAPI;
 import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.econ.SubmarketAPI;
@@ -16,8 +15,9 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
 
     protected transient SubmarketAPI currSubmarket = null;
 
-    public static void register() {
+    public static void register(){
         GenericPluginManagerAPI plugins = Global.getSector().getGenericPlugins();
+
         if (plugins.getPluginsOfClass(CargoStackAvailabilityIconProvider.class).isEmpty()) {
             CargoStackAvailabilityIconProvider p = new CargoStackAvailabilityIconProvider();
             plugins.addPlugin(p, true);
@@ -29,58 +29,66 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
     }
 
     public String getRankIconName(CargoStackAPI stack) {
-        if (stack.isPickedUp() || stack.isInPlayerCargo() || !stack.isCommodityStack()) return getDefaultMarineIcon(stack);
+        if (stack.isPickedUp()) return getDefaultStackIconName(stack);
+
         SubmarketAPI submarket = getSubmarketFor(stack);
+        MarketAPI m = submarket != null ? submarket.getMarket() : null;
 
-        if (submarket == null) return getDefaultMarineIcon(stack);
-        if (submarket.getPlugin().isFreeTransfer()) return getDefaultMarineIcon(stack);
-
-        MarketAPI m = submarket.getMarket();
-
-        if (m == null) return getDefaultMarineIcon(stack);
-
-        CommodityOnMarketAPI data = m.getCommodityData(stack.getCommodityId());
-        int econUnit = Math.round(data.getCommodity().getEconUnit());
-
-        int excess = data.getExcessQuantity();
-        int deficit = data.getDeficitQuantity();
-
-        //low vis mode only shows indicators on shortage
-
-        boolean lowVisMode = LunaSettings.getBoolean("demandIndicators", "demandIndicators_lowVis");
-
-        if (lowVisMode){
-            if (excess > 0) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess");
-            if (deficit > 0) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit");
-
-            return getDefaultMarineIcon(stack);
+        if (submarket != null && m != null){
+            if (stack.isCommodityStack() && !submarket.getPlugin().isFreeTransfer()) return getCommodityStackIconName(stack, m);
         }
 
-        //high vis mode shows price guides
-
-        if (excess > 0){
-            if (excess > econUnit) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_high");
-            else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess");
-        }
-
-        if (deficit > 0){
-            if (deficit > econUnit) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_high");
-            else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit");
-        }
-
-        float price = m.getSupplyPrice(stack.getCommodityId(), stack.getSize(), true) / stack.getSize();
-        float defaultPrice = data.getCommodity().getBasePrice();
-
-        if (price > defaultPrice) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_low");
-        else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_low");
-    }
-
-    public String getDefaultMarineIcon(CargoStackAPI stack){
-        return PlayerFleetPersonnelTracker.getInstance().getRankIconName(stack);
+        return getDefaultStackIconName(stack);
     }
 
     public String getIconName(CargoStackAPI stack) {
         return null;
+    }
+
+    public String getDefaultStackIconName(CargoStackAPI stack){
+        return PlayerFleetPersonnelTracker.getInstance().getRankIconName(stack);
+    }
+
+    public String getCommodityStackIconName(CargoStackAPI stack, MarketAPI m){
+
+        boolean showIndicator = LunaSettings.getBoolean("demandIndicators", "demandIndicators_show");
+        boolean lowVisMode = LunaSettings.getBoolean("demandIndicators", "demandIndicators_lowVis");
+
+        if (showIndicator){
+            CommodityOnMarketAPI data = m.getCommodityData(stack.getCommodityId());
+            int econUnit = Math.round(data.getCommodity().getEconUnit());
+            int excess = data.getExcessQuantity();
+            int deficit = data.getDeficitQuantity();
+
+            //low vis mode
+
+            if (lowVisMode){
+                if (excess > 0) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess");
+                if (deficit > 0) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit");
+
+                return getDefaultStackIconName(stack);
+            }
+
+            //high vis mode shows price guides
+
+            if (excess > 0){
+                if (excess > econUnit) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_high");
+                else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess");
+            }
+
+            if (deficit > 0){
+                if (deficit > econUnit) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_high");
+                else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit");
+            }
+
+            float price = m.getSupplyPrice(stack.getCommodityId(), stack.getSize(), true) / stack.getSize();
+            float defaultPrice = data.getCommodity().getBasePrice();
+
+            if (price > defaultPrice) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_low");
+            else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_low");
+        }
+
+        return getDefaultStackIconName(stack);
     }
 
     public SectorEntityToken getInteractionEntity() {

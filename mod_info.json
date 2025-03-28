@@ -2,9 +2,15 @@
     "id": "demandIndicators",
     "name": "Demand Indicators",
     "author": "SirHartley",
-    "version": "1.0.c",
+    "version": "1.0.e",
     "description": "Adds indicators to the cargo areas showing which commodities have excess or shortages.",
-    "gameVersion": "0.97a",
+    "gameVersion": "0.98a",
     "jars":["jars/demandindicators.jar"],
-    "modPlugin":"demandindicators.plugins.ModPlugin"
+    "modPlugin":"demandindicators.plugins.ModPlugin",
+    "dependencies": [
+        {
+            "id": "lunalib",
+            "name": "LunaLib",
+        },
+    ]
 }

@@ -2,7 +2,7 @@
   <artifact type="jar" build-on-make="true" name="demandindicators:jar">
     <output-path>$PROJECT_DIR$/jars/</output-path>
     <root id="archive" name="demandindicators.jar">
-      <element id="module-output" name="demandindicators" />
+      <element id="module-output" name="Demand Indicators" />
     </root>
   </artifact>
 </component>
