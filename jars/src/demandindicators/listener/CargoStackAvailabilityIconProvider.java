@@ -51,8 +51,9 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
 
     public String getCommodityStackIconName(CargoStackAPI stack, MarketAPI m){
 
-        boolean showIndicator = LunaSettings.getBoolean("demandIndicators", "demandIndicators_show");
-        boolean lowVisMode = LunaSettings.getBoolean("demandIndicators", "demandIndicators_lowVis");
+        boolean hasLunaLib = Global.getSettings().getModManager().isModEnabled("lunalib");
+        boolean showIndicator = hasLunaLib && LunaSettings.getBoolean("demandIndicators", "demandIndicators_show");
+        boolean lowVisMode = hasLunaLib && LunaSettings.getBoolean("demandIndicators", "demandIndicators_lowVis");
 
         if (showIndicator){
             CommodityOnMarketAPI data = m.getCommodityData(stack.getCommodityId());

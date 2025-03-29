@@ -8,6 +8,8 @@ None
 None
 
 --------------------------- Changelog -----------------------------
+1.0.e
+Removed - Lunalib dependency (LunaLib is still required to edit the settings)
 
 1.0.d
 Added - Lunalib dependency
