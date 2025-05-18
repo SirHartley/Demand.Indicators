@@ -54,6 +54,14 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
         boolean hasLunaLib = Global.getSettings().getModManager().isModEnabled("lunalib");
         boolean showIndicator = hasLunaLib && LunaSettings.getBoolean("demandIndicators", "demandIndicators_show");
         boolean lowVisMode = hasLunaLib && LunaSettings.getBoolean("demandIndicators", "demandIndicators_lowVis");
+        boolean invert = hasLunaLib && LunaSettings.getBoolean("demandIndicators", "demandIndicators_invert");
+
+        String imageNameExcessLow = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_low" + (invert ? "_invert" : ""));
+        String imageNameExcess = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess" + (invert ? "_invert" : ""));
+        String imageNameExcessHigh = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_high" + (invert ? "_invert" : ""));
+        String imageNameShortageLow = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_low" + (invert ? "_invert" : ""));
+        String imageNameShortage = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit" + (invert ? "_invert" : ""));
+        String imageNameShortageHigh = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_high" + (invert ? "_invert" : ""));
 
         if (showIndicator){
             CommodityOnMarketAPI data = m.getCommodityData(stack.getCommodityId());
@@ -64,8 +72,8 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
             //low vis mode
 
             if (lowVisMode){
-                if (excess > 0) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess");
-                if (deficit > 0) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit");
+                if (excess > 0) return imageNameExcess;
+                if (deficit > 0) return imageNameShortage;
 
                 return getDefaultStackIconName(stack);
             }
@@ -73,20 +81,20 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
             //high vis mode shows price guides
 
             if (excess > 0){
-                if (excess > econUnit) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_high");
-                else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess");
+                if (excess > econUnit) return imageNameExcessHigh;
+                else return imageNameExcess;
             }
 
             if (deficit > 0){
-                if (deficit > econUnit) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_high");
-                else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit");
+                if (deficit > econUnit) return imageNameShortageHigh;
+                else return imageNameShortage;
             }
 
             float price = m.getSupplyPrice(stack.getCommodityId(), stack.getSize(), true) / stack.getSize();
             float defaultPrice = data.getCommodity().getBasePrice();
 
-            if (price > defaultPrice) return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_low");
-            else return Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_low");
+            if (price > defaultPrice) return imageNameExcessLow;
+            else return imageNameShortageLow;
         }
 
         return getDefaultStackIconName(stack);

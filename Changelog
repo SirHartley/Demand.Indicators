@@ -8,6 +8,9 @@ None
 None
 
 --------------------------- Changelog -----------------------------
+1.0.f
+Added - Setting to invert the arrows
+
 1.0.e
 Removed - Lunalib dependency (LunaLib is still required to edit the settings)
 
