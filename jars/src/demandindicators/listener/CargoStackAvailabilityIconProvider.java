@@ -25,6 +25,18 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
     }
 
     public int getHandlingPriority(Object params) {
+
+        //todo this is trash, fix it
+        /*
+        how it should actually be from crabshack
+
+        override fun getHandlingPriority(params: Any?): Int {
+        if (params is CommodityIconProviderWrapper && isMeatMilitiaActive()) {
+            val stack = params.stack
+            if (stack.commodityId == Commodities.CREW) return 100
+        }
+        return -1
+    }*/
         return GenericPluginManagerAPI.MOD_GENERAL;
     }
 
