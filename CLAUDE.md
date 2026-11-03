@@ -98,7 +98,7 @@ Write documentation in ordinary English. Use direct verbs and concrete nouns; re
 ## Comments and documentation
 
 - Default to no comments. Add one only where it explains what is not apparent from the code: engine quirks, required ordering, lifecycle rules, save compatibility, serialization, reflection, units, invariants, non-obvious math, cross-file coupling.
-- Comments are minimal, all lowercase, terse programmer speak, one line where possible (`// vanilla picks one provider per stack, so marine ranks come back through ours`). Code identifiers keep their exact spelling.
+- Comments are minimal, all lowercase, terse programmer speak, one line where possible (`// the game asks one provider per stack, so the next one keeps its icon on stacks we claim`). Code identifiers keep their exact spelling.
 - Add no other comments: no javadoc, section headers, restated code, history, TODOs or commented-out code.
 - Fix or remove a comment your change makes stale; leave untouched comments alone.
 - Documentation records current architecture, contracts, entry points, and live hazards. It must not become a development diary, pull-request history, or postmortem.

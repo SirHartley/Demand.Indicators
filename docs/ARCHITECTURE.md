@@ -13,10 +13,9 @@ Technical routing for the current implementation, checked against game `0.98a-RC
 | Change / symptom | Route |
 |---|---|
 | No arrows at all | `ModPlugin.onGameLoad -> CargoStackAvailabilityIconProvider.register`; then [settings](#settings) |
-| Wrong arrow on a stack | `getRankIconName -> getSubmarketFor -> getCommodityStackIconName`; [indicator choice](#indicator-choice) |
-| Arrow on player cargo, storage or a colony stockpile | `getSubmarketFor` (player cargo never matches a submarket) and `SubmarketPlugin.isFreeTransfer` in `getRankIconName` |
-| Marine rank icon missing | `getDefaultStackIconName -> PlayerFleetPersonnelTracker.getRankIconName`; [plugin picking](#plugin-picking) |
-| Another mod's commodity icon or rank icon not shown | `getHandlingPriority`; [plugin picking](#plugin-picking) |
+| Wrong arrow on a stack | `getRankIconName -> getArrowIconName -> getSubmarketFor -> getCommodityStackIconName`; [indicator choice](#indicator-choice) |
+| Arrow on player cargo, storage or a colony stockpile | `getSubmarketFor` (player cargo never matches a submarket) and `SubmarketPlugin.isFreeTransfer` in `getArrowIconName` |
+| Marine rank or another mod's icon missing | `getHandlingPriority` (-1 off market stacks) and `getIconName -> getNextProvider`; [plugin picking](#plugin-picking) |
 | Setting has no effect | `data/config/LunaSettings.csv` field id -> `LunaSettings.getBoolean("demandIndicators", <id>)` in `getCommodityStackIconName` |
 | Arrow sprite missing or wrong file | `data/config/settings.json` `graphics.ui` key -> `SettingsAPI.getSpriteName("ui", <key>)`; [sprites](#sprites) |
 
@@ -39,26 +38,27 @@ Nothing is saved. The vanilla `GenericPluginManager` keeps transient plugins in 
 Evidence: `CargoStackView.renderAtCenter` (decompiled `0.98a-RC8`, `obf/campaign/ui/trade/CargoStackView.java` in the `starsector-knowledge` skill) and `GenericPluginManager.pickPlugin`.
 
 - For every `RESOURCES` stack, every frame it renders, the game calls `pickPlugin(CommodityIconProvider.class, new CommodityIconProviderWrapper(stack))`. The plugin with the highest `getHandlingPriority` of at least 0 wins; on a tie the one registered first wins. Only the winner is asked for `getIconName` (a replacement commodity icon) and `getRankIconName` (a small sprite drawn 5 px in from the stack's top left corner).
-- `getHandlingPriority` returns `GenericPluginManagerAPI.MOD_GENERAL` (100) for every stack. Vanilla `PlayerFleetPersonnelTracker` returns `CORE_GENERAL` (0) only for marine stacks with rank data and -1 otherwise, so this provider always wins over vanilla.
-- Because it always wins, it hands every stack it does not mark back to `PlayerFleetPersonnelTracker.getInstance().getRankIconName(stack)` (`getDefaultStackIconName`), which returns the marine rank sprite or null. `getIconName` returns null, so commodity icons stay vanilla.
-- Another mod's `CommodityIconProvider` at 100 or lower is never asked while this one is registered first, and loses its icons. The `todo` in `getHandlingPriority` names this; Crab Shack's crew provider is the known case.
+- `getHandlingPriority` returns `GenericPluginManagerAPI.MOD_SUBSET` (300) only for stacks that get an arrow (`getArrowIconName` not null) and -1 for every other stack, so vanilla marine ranks (`PlayerFleetPersonnelTracker`, `CORE_GENERAL`) and other mods' providers own player cargo, storage and unmarked stacks.
+- On a stack it claims, the arrow takes the rank icon slot, which also covers a vanilla marine rank or another mod's rank sprite there. `getIconName` passes the commodity icon on to `getNextProvider`: the provider `pickPlugin` would have chosen without this one (same rule, highest priority of at least 0, first on a tie), so another mod's replacement icon stays on the stack under the arrow.
+- Crab Shack registers transient providers at `MOD_GENERAL` in its `onGameLoad`: crew while Meat Militia is active, lobsters while Lobster Uprising is active, and its nova drone commodity always. Each returns a replacement commodity icon and no rank icon, so on market stacks both mods show: its icon with the arrow on top.
+- `getArrowIconName` runs twice per stack per frame (priority, then rank icon), including the settings and sprite lookups.
 
 ### Indicator choice
 
-`getRankIconName(stack)`:
+`getArrowIconName(stack)`, null meaning no arrow and no claim on the stack:
 
-1. A stack being dragged (`isPickedUp`) gets the default icon.
-2. `getSubmarketFor` returns null for a stack without cargo, otherwise finds the submarket whose cargo is the stack's cargo, among the submarkets of the current interaction target's market (the market's primary entity when there is one). Player cargo and stacks outside a market dialog find none and get the default icon.
-3. Only commodity stacks in a submarket whose plugin is not `isFreeTransfer()` get an arrow: storage and the colony's local resources are free transfer and keep the default icon.
+1. A stack being dragged (`isPickedUp`) gets none.
+2. `getSubmarketFor` returns null for a stack without cargo, otherwise finds the submarket whose cargo is the stack's cargo, among the submarkets of the current interaction target's market (the market's primary entity when there is one). Player cargo and stacks outside a market dialog find none and get no arrow.
+3. Only commodity stacks in a submarket whose plugin is not `isFreeTransfer()` get an arrow: storage and the colony's local resources are free transfer and get none.
 
 `getCommodityStackIconName(stack, market)` reads `CommodityOnMarketAPI` for the stack's commodity: `excess = getExcessQuantity()`, `deficit = getDeficitQuantity()`, `econUnit = round(getCommodity().getEconUnit())`.
 
 | Setting / state | Sprite key (`_invert` appended when Invert Indicators is on) |
 |---|---|
-| Show Trade Indicators off | Default icon |
+| Show Trade Indicators off | None |
 | Low Impact Mode, excess > 0 | `demandIndicators_commodityExcess` |
 | Low Impact Mode, deficit > 0 | `demandIndicators_commodityDeficit` |
-| Low Impact Mode, neither | Default icon |
+| Low Impact Mode, neither | None |
 | excess > econUnit | `demandIndicators_commodityExcess_high` |
 | 0 < excess <= econUnit | `demandIndicators_commodityExcess` |
 | deficit > econUnit | `demandIndicators_commodityDeficit_high` |
@@ -104,13 +104,13 @@ Use `rg --files jars/src/demandindicators` for the complete inventory.
 | File | Owner / connection |
 |---|---|
 | `plugins/ModPlugin.java` | Registers the provider in `onGameLoad` |
-| `listener/CargoStackAvailabilityIconProvider.java` | The only runtime logic: `CommodityIconProvider` registration, priority, submarket lookup, settings reads and the indicator choice |
+| `listener/CargoStackAvailabilityIconProvider.java` | The only runtime logic: `CommodityIconProvider` registration, priority, handing icons on to the next provider, submarket lookup, settings reads and the indicator choice |
 | `tools/ReleaseBuild.java`, `tools/ReleaseBuildChecks.java` | Release builder and its checks, see [RELEASE.md](RELEASE.md) |
 
 ## Contracts
 
 - `getRankIconName` runs inside rendering, once per market stack per frame. Keep it free of allocation heavy work and of anything that changes game state.
-- The provider must return the vanilla marine rank for stacks it does not mark, because its priority hides `PlayerFleetPersonnelTracker` from `pickPlugin`.
+- `getHandlingPriority` must claim exactly the stacks `getRankIconName` draws on. Claiming more hides other providers on stacks that get nothing back; `getIconName` only passes the commodity icon on, never the rank icon.
 - `getSubmarketFor` compares cargo by identity (`sub.getCargo() == stack.getCargo()`), the same way `PlayerFleetPersonnelTracker.getSubmarketFor` does.
 
 ## Dead or dormant
@@ -118,4 +118,3 @@ Use `rg --files jars/src/demandindicators` for the complete inventory.
 | Component | State |
 |---|---|
 | `CargoStackAvailabilityIconProvider.currSubmarket` | Never assigned; `getSubmarketFor` returns it (null) when nothing matches |
-| `CargoStackAvailabilityIconProvider.getIconName` | Always null; commodity icons stay vanilla |
