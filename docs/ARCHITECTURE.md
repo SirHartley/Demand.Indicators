@@ -12,7 +12,7 @@ Technical routing for the current implementation, checked against game `0.98a-RC
 
 | Change / symptom | Route |
 |---|---|
-| No arrows at all | `ModPlugin.onGameLoad -> CargoStackAvailabilityIconProvider.register`; then [settings](#settings): without LunaLib enabled every arrow is off |
+| No arrows at all | `ModPlugin.onGameLoad -> CargoStackAvailabilityIconProvider.register`; then [settings](#settings) |
 | Wrong arrow on a stack | `getRankIconName -> getSubmarketFor -> getCommodityStackIconName`; [indicator choice](#indicator-choice) |
 | Arrow on player cargo, storage or a colony stockpile | `getSubmarketFor` (player cargo never matches a submarket) and `SubmarketPlugin.isFreeTransfer` in `getRankIconName` |
 | Marine rank icon missing | `getDefaultStackIconName -> PlayerFleetPersonnelTracker.getRankIconName`; [plugin picking](#plugin-picking) |
@@ -55,7 +55,7 @@ Evidence: `CargoStackView.renderAtCenter` (decompiled `0.98a-RC8`, `obf/campaign
 
 | Setting / state | Sprite key (`_invert` appended when Invert Indicators is on) |
 |---|---|
-| Show Trade Indicators off, or LunaLib not enabled | Default icon |
+| Show Trade Indicators off | Default icon |
 | Low Impact Mode, excess > 0 | `demandIndicators_commodityExcess` |
 | Low Impact Mode, deficit > 0 | `demandIndicators_commodityDeficit` |
 | Low Impact Mode, neither | Default icon |
@@ -72,7 +72,7 @@ Excess is checked before deficit. The unit price is `market.getSupplyPrice(id, s
 
 `data/config/LunaSettings.csv` owns the ids, defaults and help text: `demandIndicators_show` (Show Trade Indicators, on), `demandIndicators_lowVis` (Low Impact Mode, off) and `demandIndicators_invert` (Invert Indicators, off). The header row's id is `IndEvo_header1`. There is no settings class and no cache: `getCommodityStackIconName` checks `ModManagerAPI.isModEnabled("lunalib")` and calls `LunaSettings.getBoolean("demandIndicators", <id>)` for all three on every call, which is every frame for each market stack. LunaLib loads its settings on first use and returns null for an unknown field id, which would throw on unboxing, so a new setting needs its CSV row in the same commit. A changed setting applies on the next frame.
 
-LunaLib is optional (no dependency since `1.0.e`). Without it every `hasLunaLib && ...` term is false, so Show Trade Indicators reads as off and no arrow is drawn.
+LunaLib is optional (no dependency since `1.0.e`). Without it the three settings take their CSV defaults (show on, low impact off, invert off) and `LunaSettings` is never called.
 
 ### Sprites
 
