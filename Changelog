@@ -8,6 +8,9 @@ None
 None
 
 --------------------------- Changelog -----------------------------
+1.0.g - UNRELEASED
+Fixed - Arrows now show when LunaLib is not installed
+
 1.0.f
 Added - Setting to invert the arrows
 
