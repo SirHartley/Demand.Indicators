@@ -25,23 +25,26 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
     }
 
     public int getHandlingPriority(Object params) {
-
-        //todo this is trash, fix it
-        /*
-        how it should actually be from crabshack
-
-        override fun getHandlingPriority(params: Any?): Int {
-        if (params is CommodityIconProviderWrapper && isMeatMilitiaActive()) {
-            val stack = params.stack
-            if (stack.commodityId == Commodities.CREW) return 100
+        if (params instanceof PlayerFleetPersonnelTracker.CommodityIconProviderWrapper wrapper
+                && getArrowIconName(wrapper.stack) != null) {
+            return GenericPluginManagerAPI.MOD_SUBSET;
         }
-        return -1
-    }*/
-        return GenericPluginManagerAPI.MOD_GENERAL;
+
+        return -1;
     }
 
     public String getRankIconName(CargoStackAPI stack) {
-        if (stack.isPickedUp()) return getDefaultStackIconName(stack);
+        return getArrowIconName(stack);
+    }
+
+    // the game asks one provider per stack, so the next one keeps its icon on stacks we claim
+    public String getIconName(CargoStackAPI stack) {
+        CommodityIconProvider next = getNextProvider(stack);
+        return next != null ? next.getIconName(stack) : null;
+    }
+
+    public String getArrowIconName(CargoStackAPI stack) {
+        if (stack.isPickedUp()) return null;
 
         SubmarketAPI submarket = getSubmarketFor(stack);
         MarketAPI m = submarket != null ? submarket.getMarket() : null;
@@ -50,15 +53,25 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
             if (stack.isCommodityStack() && !submarket.getPlugin().isFreeTransfer()) return getCommodityStackIconName(stack, m);
         }
 
-        return getDefaultStackIconName(stack);
-    }
-
-    public String getIconName(CargoStackAPI stack) {
         return null;
     }
 
-    public String getDefaultStackIconName(CargoStackAPI stack){
-        return PlayerFleetPersonnelTracker.getInstance().getRankIconName(stack);
+    public CommodityIconProvider getNextProvider(CargoStackAPI stack) {
+        Object params = new PlayerFleetPersonnelTracker.CommodityIconProviderWrapper(stack);
+        CommodityIconProvider best = null;
+        int bestPriority = -1;
+
+        for (GenericPluginManagerAPI.GenericPlugin plugin : Global.getSector().getGenericPlugins().getPluginsOfClass(CommodityIconProvider.class)) {
+            if (plugin == this) continue;
+
+            int priority = plugin.getHandlingPriority(params);
+            if (priority > bestPriority) {
+                best = (CommodityIconProvider) plugin;
+                bestPriority = priority;
+            }
+        }
+
+        return best;
     }
 
     public String getCommodityStackIconName(CargoStackAPI stack, MarketAPI m){
@@ -87,7 +100,7 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
                 if (excess > 0) return imageNameExcess;
                 if (deficit > 0) return imageNameShortage;
 
-                return getDefaultStackIconName(stack);
+                return null;
             }
 
             //high vis mode shows price guides
@@ -105,11 +118,11 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
             float price = m.getSupplyPrice(stack.getCommodityId(), stack.getSize(), true) / stack.getSize();
             float defaultPrice = data.getCommodity().getBasePrice();
 
-            if (price > defaultPrice) return imageNameExcessLow;
-            else return imageNameShortageLow;
+            if (price > defaultPrice) return imageNameShortageLow;
+            else return imageNameExcessLow;
         }
 
-        return getDefaultStackIconName(stack);
+        return null;
     }
 
     public SectorEntityToken getInteractionEntity() {
