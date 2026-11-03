@@ -105,8 +105,8 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
             float price = m.getSupplyPrice(stack.getCommodityId(), stack.getSize(), true) / stack.getSize();
             float defaultPrice = data.getCommodity().getBasePrice();
 
-            if (price > defaultPrice) return imageNameExcessLow;
-            else return imageNameShortageLow;
+            if (price > defaultPrice) return imageNameShortageLow;
+            else return imageNameExcessLow;
         }
 
         return getDefaultStackIconName(stack);

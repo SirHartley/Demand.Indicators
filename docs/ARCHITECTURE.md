@@ -63,10 +63,10 @@ Evidence: `CargoStackView.renderAtCenter` (decompiled `0.98a-RC8`, `obf/campaign
 | 0 < excess <= econUnit | `demandIndicators_commodityExcess` |
 | deficit > econUnit | `demandIndicators_commodityDeficit_high` |
 | 0 < deficit <= econUnit | `demandIndicators_commodityDeficit` |
-| neither, unit price > base price | `demandIndicators_commodityExcess_low` |
-| neither, unit price <= base price | `demandIndicators_commodityDeficit_low` |
+| neither, unit price > base price | `demandIndicators_commodityDeficit_low` |
+| neither, unit price <= base price | `demandIndicators_commodityExcess_low` |
 
-Excess is checked before deficit. The unit price is `market.getSupplyPrice(id, stackSize, true) / stackSize`, the price the market charges the player for the whole stack divided by the stack size, compared with `getCommodity().getBasePrice()`. The `_low` sprites are gray: by default the excess one points down like the green excess arrow and the deficit one points up like the orange shortage arrow, so a stack priced above base gets the gray down arrow. Whether that direction is intended is not stated anywhere in the repository.
+Excess is checked before deficit. The unit price is `market.getSupplyPrice(id, stackSize, true) / stackSize`, the price the market charges the player for the whole stack divided by the stack size, compared with `getCommodity().getBasePrice()`. The `_low` sprites are gray twins of the colored ones: a stack priced above base gets the gray arrow shaped like the orange shortage arrow, one at or below base the gray one shaped like the green excess arrow. Invert Indicators flips both sets together.
 
 ### Settings
 
