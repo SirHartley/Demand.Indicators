@@ -1,3 +1,5 @@
 # Project exclude paths
 /jars/production
 /jars/demandindicators.jar
+/out/
+/jars/release/
