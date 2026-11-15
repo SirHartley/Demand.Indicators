@@ -1,6 +1,6 @@
 # Demand.Indicators
 
-Starsector mod (game `0.98a`) that draws a small arrow on commodity stacks in market cargo screens: green for excess, orange for shortage, double arrows for large amounts and gray arrows as a price guide. One generic plugin, `CargoStackAvailabilityIconProvider`, does all of it; LunaLib settings switch it off, reduce it or flip the arrows.
+Starsector mod (game `0.98.5a`) that draws a small arrow on commodity stacks in market cargo screens: green for excess, orange for shortage, double arrows for large amounts and gray arrows as a price guide. One generic plugin, `CargoStackAvailabilityIconProvider`, does all of it; LunaLib settings switch it off, reduce it or flip the arrows.
 
 ## Required workflow
 

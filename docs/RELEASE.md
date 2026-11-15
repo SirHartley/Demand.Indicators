@@ -11,7 +11,7 @@ How Demand.Indicators is built, packaged and published. Nothing here runs unless
 | Version file | `demandIndicators.version` | Online Version Checker file on `master`, registered in `data/config/version/version_files.csv`; stamped at packaging, committed back after a release |
 | Release builder | `jars/src/demandindicators/tools/ReleaseBuild.java` | `build` and `package`, run with `java <file>` |
 | Builder checks | `jars/src/demandindicators/tools/ReleaseBuildChecks.java` | Headless checks of changelog parsing, stamping, file filtering and asset references |
-| Build libraries | `lib/` | `starfarer.api.jar`, `lwjgl.jar`, `lwjgl_util.jar`, `json.jar` and `log4j-1.2.9.jar` from game `0.98a-RC8`, and `LunaLib.jar`, all copied from Industrial.Evolution's `lib/` |
+| Build libraries | `lib/` | `starfarer.api.jar` from game `0.98.5a-RC6`, `lwjgl.jar`, `lwjgl_util.jar`, `json.jar` and `log4j-1.2.9.jar` (unchanged since `0.98a-RC8`) and `LunaLib.jar` from Industrial.Evolution's `lib/` |
 | Release jar | `jars/release/demandindicators.jar` | Built by `build`, gitignored, runtime classes only; shipped as `jars/demandindicators.jar` |
 | Release workflow | `.github/workflows/release.yml` | Manual only: preview without a version, publish with one |
 

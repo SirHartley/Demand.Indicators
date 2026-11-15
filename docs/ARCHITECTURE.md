@@ -1,6 +1,6 @@
 # Architecture
 
-Technical routing for the current implementation, checked against game `0.98a-RC8` and the LunaLib jar in `lib/`. Code paths below are relative to `jars/src/demandindicators/`; data paths are repository-relative. Search the named owner before adding another implementation.
+Technical routing for the current implementation, checked against game `0.98.5a-RC6` and the LunaLib jar in `lib/`. Code paths below are relative to `jars/src/demandindicators/`; data paths are repository-relative. Search the named owner before adding another implementation.
 
 | Reference | Scope |
 |---|---|
@@ -35,7 +35,7 @@ Nothing is saved. The vanilla `GenericPluginManager` keeps transient plugins in 
 
 ### Plugin picking
 
-Evidence: `CargoStackView.renderAtCenter` (decompiled `0.98a-RC8`, `obf/campaign/ui/trade/CargoStackView.java` in the `starsector-knowledge` skill) and `GenericPluginManager.pickPlugin`.
+Evidence: `CargoStackView.renderAtCenter` (decompiled `0.98.5a-RC6` `starfarer_obf.jar`) and `GenericPluginManager.pickPlugin`.
 
 - For every `RESOURCES` stack, every frame it renders, the game calls `pickPlugin(CommodityIconProvider.class, new CommodityIconProviderWrapper(stack))`. The plugin with the highest `getHandlingPriority` of at least 0 wins; on a tie the one registered first wins. Only the winner is asked for `getIconName` (a replacement commodity icon) and `getRankIconName` (a small sprite drawn 5 px in from the stack's top left corner).
 - `getHandlingPriority` returns `GenericPluginManagerAPI.MOD_SUBSET` (300) only for stacks that get an arrow (`getArrowIconName` not null) and -1 for every other stack, so vanilla marine ranks (`PlayerFleetPersonnelTracker`, `CORE_GENERAL`) and other mods' providers own player cargo, storage and unmarked stacks.

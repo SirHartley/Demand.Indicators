@@ -8,10 +8,11 @@ None
 None
 
 --------------------------- Changelog -----------------------------
-1.0.g - UNRELEASED
-Fixed - Arrows now show when LunaLib is not installed
-Fixed - Gray price arrows now point the right way
-Fixed - Crab Shack cargo icons no longer disappear
+1.0.g
+Adjusted - Updated for 0.98.5a
+Fixed - Arrows not showing when LunaLib is not installed
+Fixed - Gray price arrows pointing the wrong way
+Fixed - Cargo icons from other mods (Crab Shack) no longer disappear in markets
 
 1.0.f
 Added - Setting to invert the arrows
