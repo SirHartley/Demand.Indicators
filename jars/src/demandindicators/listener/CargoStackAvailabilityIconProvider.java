@@ -44,14 +44,25 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
     }
 
     public String getArrowIconName(CargoStackAPI stack) {
-        if (stack.isPickedUp()) return null;
+        if (stack.isPickedUp() || !stack.isCommodityStack() || !getSetting("demandIndicators_show", true)) return null;
+
+        if (stack.isInPlayerCargo()) {
+            String mode = Global.getSettings().getModManager().isModEnabled("lunalib")
+                    ? LunaSettings.getString("demandIndicators", "demandIndicators_playerCargo")
+                    : "Off";
+            boolean sellHints = "Sell Hints".equals(mode);
+            if (!sellHints && !"Always Show".equals(mode)) return null;
+
+            MarketAPI m = getTradeMarket();
+            if (m == null || sellHints && hasStock(m, stack.getCommodityId())) return null;
+
+            return getCommodityStackIconName(stack, m, true, sellHints);
+        }
 
         SubmarketAPI submarket = getSubmarketFor(stack);
         MarketAPI m = submarket != null ? submarket.getMarket() : null;
 
-        if (submarket != null && m != null){
-            if (stack.isCommodityStack() && !submarket.getPlugin().isFreeTransfer()) return getCommodityStackIconName(stack, m);
-        }
+        if (m != null && !submarket.getPlugin().isFreeTransfer()) return getCommodityStackIconName(stack, m, false, false);
 
         return null;
     }
@@ -74,55 +85,67 @@ public class CargoStackAvailabilityIconProvider implements CommodityIconProvider
         return best;
     }
 
-    public String getCommodityStackIconName(CargoStackAPI stack, MarketAPI m){
+    public String getCommodityStackIconName(CargoStackAPI stack, MarketAPI m, boolean playerCargo, boolean sellHints){
+        boolean lowVisMode = getSetting("demandIndicators_lowVis", false);
+        String suffix = getSetting("demandIndicators_invert", false) ? "_invert" : "";
 
-        boolean hasLunaLib = Global.getSettings().getModManager().isModEnabled("lunalib");
-        boolean showIndicator = !hasLunaLib || LunaSettings.getBoolean("demandIndicators", "demandIndicators_show");
-        boolean lowVisMode = hasLunaLib && LunaSettings.getBoolean("demandIndicators", "demandIndicators_lowVis");
-        boolean invert = hasLunaLib && LunaSettings.getBoolean("demandIndicators", "demandIndicators_invert");
+        CommodityOnMarketAPI data = m.getCommodityData(stack.getCommodityId());
+        int econUnit = Math.round(data.getCommodity().getEconUnit());
+        int excess = data.getExcessQuantity();
+        int deficit = data.getDeficitQuantity();
+        float defaultPrice = data.getCommodity().getBasePrice();
 
-        String imageNameExcessLow = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_low" + (invert ? "_invert" : ""));
-        String imageNameExcess = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess" + (invert ? "_invert" : ""));
-        String imageNameExcessHigh = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityExcess_high" + (invert ? "_invert" : ""));
-        String imageNameShortageLow = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_low" + (invert ? "_invert" : ""));
-        String imageNameShortage = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit" + (invert ? "_invert" : ""));
-        String imageNameShortageHigh = Global.getSettings().getSpriteName("ui", "demandIndicators_commodityDeficit_high" + (invert ? "_invert" : ""));
+        if (sellHints && getUnitPrice(stack, m, true) <= defaultPrice) return null;
 
-        if (showIndicator){
-            CommodityOnMarketAPI data = m.getCommodityData(stack.getCommodityId());
-            int econUnit = Math.round(data.getCommodity().getEconUnit());
-            int excess = data.getExcessQuantity();
-            int deficit = data.getDeficitQuantity();
+        if (lowVisMode){
+            if (excess > 0) return sellHints ? null : getSprite("demandIndicators_commodityExcess", suffix);
+            if (deficit > 0) return getSprite("demandIndicators_commodityDeficit", suffix);
 
-            //low vis mode
+            return null;
+        }
 
-            if (lowVisMode){
-                if (excess > 0) return imageNameExcess;
-                if (deficit > 0) return imageNameShortage;
+        if (excess > 0) return sellHints ? null : getSprite(excess > econUnit ? "demandIndicators_commodityExcess_high" : "demandIndicators_commodityExcess", suffix);
+        if (deficit > 0) return getSprite(deficit > econUnit ? "demandIndicators_commodityDeficit_high" : "demandIndicators_commodityDeficit", suffix);
 
-                return null;
-            }
+        if (getUnitPrice(stack, m, playerCargo) > defaultPrice) return getSprite("demandIndicators_commodityDeficit_low", suffix);
+        return getSprite("demandIndicators_commodityExcess_low", suffix);
+    }
 
-            //high vis mode shows price guides
+    // player cargo compares the sell price, market cargo the buy price
+    private static float getUnitPrice(CargoStackAPI stack, MarketAPI m, boolean playerCargo) {
+        float total = playerCargo
+                ? m.getDemandPrice(stack.getCommodityId(), stack.getSize(), true)
+                : m.getSupplyPrice(stack.getCommodityId(), stack.getSize(), true);
+        return total / stack.getSize();
+    }
 
-            if (excess > 0){
-                if (excess > econUnit) return imageNameExcessHigh;
-                else return imageNameExcess;
-            }
+    private static String getSprite(String key, String suffix) {
+        return Global.getSettings().getSpriteName("ui", key + suffix);
+    }
 
-            if (deficit > 0){
-                if (deficit > econUnit) return imageNameShortageHigh;
-                else return imageNameShortage;
-            }
+    private static boolean getSetting(String id, boolean fallback) {
+        if (!Global.getSettings().getModManager().isModEnabled("lunalib")) return fallback;
+        return LunaSettings.getBoolean("demandIndicators", id);
+    }
 
-            float price = m.getSupplyPrice(stack.getCommodityId(), stack.getSize(), true) / stack.getSize();
-            float defaultPrice = data.getCommodity().getBasePrice();
+    public MarketAPI getTradeMarket() {
+        SectorEntityToken entity = getInteractionEntity();
+        MarketAPI m = entity != null ? entity.getMarket() : null;
+        if (m == null) return null;
 
-            if (price > defaultPrice) return imageNameShortageLow;
-            else return imageNameExcessLow;
+        for (SubmarketAPI sub : m.getSubmarketsCopy()) {
+            if (!sub.getPlugin().isFreeTransfer() && !sub.getPlugin().isHidden()) return m;
         }
 
         return null;
+    }
+
+    public boolean hasStock(MarketAPI m, String commodityId) {
+        for (SubmarketAPI sub : m.getSubmarketsCopy()) {
+            if (!sub.getPlugin().isFreeTransfer() && !sub.getPlugin().isHidden() && sub.getCargo().getCommodityQuantity(commodityId) > 0) return true;
+        }
+
+        return false;
     }
 
     public SectorEntityToken getInteractionEntity() {

@@ -13,10 +13,10 @@ Technical routing for the current implementation, checked against game `0.98.5a-
 | Change / symptom | Route |
 |---|---|
 | No arrows at all | `ModPlugin.onGameLoad -> CargoStackAvailabilityIconProvider.register`; then [settings](#settings) |
-| Wrong arrow on a stack | `getRankIconName -> getArrowIconName -> getSubmarketFor -> getCommodityStackIconName`; [indicator choice](#indicator-choice) |
-| Arrow on player cargo, storage or a colony stockpile | `getSubmarketFor` (player cargo never matches a submarket) and `SubmarketPlugin.isFreeTransfer` in `getArrowIconName` |
-| Marine rank or another mod's icon missing | `getHandlingPriority` (-1 off market stacks) and `getIconName -> getNextProvider`; [plugin picking](#plugin-picking) |
-| Setting has no effect | `data/config/LunaSettings.csv` field id -> `LunaSettings.getBoolean("demandIndicators", <id>)` in `getCommodityStackIconName` |
+| Wrong arrow on a stack | `getRankIconName -> getArrowIconName -> getSubmarketFor` or `getTradeMarket -> getCommodityStackIconName`; [indicator choice](#indicator-choice) |
+| Arrow on player cargo, storage or a colony stockpile | `CargoStackAPI.isInPlayerCargo`, `getTradeMarket` and `SubmarketPlugin.isFreeTransfer` in `getArrowIconName` |
+| Marine rank or another mod's icon missing | `getHandlingPriority` (-1 on stacks without an arrow) and `getIconName -> getNextProvider`; [plugin picking](#plugin-picking) |
+| Setting has no effect | `data/config/LunaSettings.csv` field id -> `getSetting(<id>, <fallback>)` in `getArrowIconName` or `getCommodityStackIconName` |
 | Arrow sprite missing or wrong file | `data/config/settings.json` `graphics.ui` key -> `SettingsAPI.getSpriteName("ui", <key>)`; [sprites](#sprites) |
 
 ## Registration and lifecycle
@@ -27,7 +27,7 @@ Technical routing for the current implementation, checked against game `0.98.5a-
 | `plugins/ModPlugin.onGameLoad` | Calls `CargoStackAvailabilityIconProvider.register()` on every load and new game |
 | `GenericPluginManagerAPI` | `register()` adds one provider with `addPlugin(p, true)` when `getPluginsOfClass` finds none, so it is idempotent within a session |
 | `data/config/settings.json` | Twelve `graphics.ui` sprite keys, see [sprites](#sprites) |
-| `data/config/LunaSettings.csv` | A `General` header and the three settings, see [settings](#settings) |
+| `data/config/LunaSettings.csv` | A `General` header and the four settings, see [settings](#settings) |
 | `data/config/LunaSettingsConfig.json` | LunaLib settings icon for `demandIndicators`: `graphics/icon/small_icon_demInd.png` |
 | `data/config/version/version_files.csv` | Version Checker entry for `demandIndicators.version` |
 
@@ -38,7 +38,7 @@ Nothing is saved. The vanilla `GenericPluginManager` keeps transient plugins in 
 Evidence: `CargoStackView.renderAtCenter` (decompiled `0.98.5a-RC6` `starfarer_obf.jar`) and `GenericPluginManager.pickPlugin`.
 
 - For every `RESOURCES` stack, every frame it renders, the game calls `pickPlugin(CommodityIconProvider.class, new CommodityIconProviderWrapper(stack))`. The plugin with the highest `getHandlingPriority` of at least 0 wins; on a tie the one registered first wins. Only the winner is asked for `getIconName` (a replacement commodity icon) and `getRankIconName` (a small sprite drawn 5 px in from the stack's top left corner).
-- `getHandlingPriority` returns `GenericPluginManagerAPI.MOD_SUBSET` (300) only for stacks that get an arrow (`getArrowIconName` not null) and -1 for every other stack, so vanilla marine ranks (`PlayerFleetPersonnelTracker`, `CORE_GENERAL`) and other mods' providers own player cargo, storage and unmarked stacks.
+- `getHandlingPriority` returns `GenericPluginManagerAPI.MOD_SUBSET` (300) only for stacks that get an arrow (`getArrowIconName` not null) and -1 for every other stack, so vanilla marine ranks (`PlayerFleetPersonnelTracker`, `CORE_GENERAL`) and other mods' providers own storage, unmarked stacks and player cargo while Indicators On Your Cargo is Off.
 - On a stack it claims, the arrow takes the rank icon slot, which also covers a vanilla marine rank or another mod's rank sprite there. `getIconName` passes the commodity icon on to `getNextProvider`: the provider `pickPlugin` would have chosen without this one (same rule, highest priority of at least 0, first on a tie), so another mod's replacement icon stays on the stack under the arrow.
 - Crab Shack registers transient providers at `MOD_GENERAL` in its `onGameLoad`: crew while Meat Militia is active, lobsters while Lobster Uprising is active, and its nova drone commodity always. Each returns a replacement commodity icon and no rank icon, so on market stacks both mods show: its icon with the arrow on top.
 - `getArrowIconName` runs twice per stack per frame (priority, then rank icon), including the settings and sprite lookups.
@@ -47,15 +47,15 @@ Evidence: `CargoStackView.renderAtCenter` (decompiled `0.98.5a-RC6` `starfarer_o
 
 `getArrowIconName(stack)`, null meaning no arrow and no claim on the stack:
 
-1. A stack being dragged (`isPickedUp`) gets none.
-2. `getSubmarketFor` returns null for a stack without cargo, otherwise finds the submarket whose cargo is the stack's cargo, among the submarkets of the current interaction target's market (the market's primary entity when there is one). Player cargo and stacks outside a market dialog find none and get no arrow.
-3. Only commodity stacks in a submarket whose plugin is not `isFreeTransfer()` get an arrow: storage and the colony's local resources are free transfer and get none.
+1. A stack being dragged (`isPickedUp`), a stack that is not a commodity and every stack while Show Trade Indicators is off get none.
+2. Player cargo (`isInPlayerCargo`) gets an arrow only with Indicators On Your Cargo set to `Sell Hints` or `Always Show`, from the market `getTradeMarket` returns: the current interaction target's market (the market's primary entity when there is one) when it has a submarket that is neither `isFreeTransfer()` nor `isHidden()`. Outside a market dialog, or at a market with only storage, there is none. With `Sell Hints`, a stack also gets none when `hasStock` finds any of the commodity in such a submarket.
+3. Other stacks: `getSubmarketFor` returns null for a stack without cargo, otherwise finds the submarket whose cargo is the stack's cargo, among the submarkets of the same interaction market. Stacks outside a market dialog find none and get no arrow.
+4. Only stacks in a submarket whose plugin is not `isFreeTransfer()` get an arrow: storage and the colony's local resources are free transfer and get none.
 
-`getCommodityStackIconName(stack, market)` reads `CommodityOnMarketAPI` for the stack's commodity: `excess = getExcessQuantity()`, `deficit = getDeficitQuantity()`, `econUnit = round(getCommodity().getEconUnit())`.
+`getCommodityStackIconName(stack, market, playerCargo, sellHints)` reads `CommodityOnMarketAPI` for the stack's commodity: `excess = getExcessQuantity()`, `deficit = getDeficitQuantity()`, `econUnit = round(getCommodity().getEconUnit())`.
 
 | Setting / state | Sprite key (`_invert` appended when Invert Indicators is on) |
 |---|---|
-| Show Trade Indicators off | None |
 | Low Impact Mode, excess > 0 | `demandIndicators_commodityExcess` |
 | Low Impact Mode, deficit > 0 | `demandIndicators_commodityDeficit` |
 | Low Impact Mode, neither | None |
@@ -66,17 +66,17 @@ Evidence: `CargoStackView.renderAtCenter` (decompiled `0.98.5a-RC6` `starfarer_o
 | neither, unit price > base price | `demandIndicators_commodityDeficit_low` |
 | neither, unit price <= base price | `demandIndicators_commodityExcess_low` |
 
-Excess is checked before deficit. The unit price is `market.getSupplyPrice(id, stackSize, true) / stackSize`, the price the market charges the player for the whole stack divided by the stack size, compared with `getCommodity().getBasePrice()`. The `_low` sprites are gray twins of the colored ones: a stack priced above base gets the gray arrow shaped like the orange shortage arrow, one at or below base the gray one shaped like the green excess arrow. Invert Indicators flips both sets together.
+With `Sell Hints` (player cargo only), a stack whose sell price is at or below base price gets none, and so does every excess row, so only shortage arrows and the gray shortage arrow are left. Excess is checked before deficit. The unit price is the price of the whole stack divided by the stack size: `market.getSupplyPrice(id, stackSize, true)`, what the market charges the player, for market stacks, and `market.getDemandPrice(id, stackSize, true)`, what the market pays the player, for player cargo. It is compared with `getCommodity().getBasePrice()`. The `_low` sprites are gray twins of the colored ones: a stack priced above base gets the gray arrow shaped like the orange shortage arrow, one at or below base the gray one shaped like the green excess arrow. Invert Indicators flips both sets together.
 
 ### Settings
 
-`data/config/LunaSettings.csv` owns the ids, defaults and help text: `demandIndicators_show` (Show Trade Indicators, on), `demandIndicators_lowVis` (Low Impact Mode, off) and `demandIndicators_invert` (Invert Indicators, off). The header row's id is `IndEvo_header1`. There is no settings class and no cache: `getCommodityStackIconName` checks `ModManagerAPI.isModEnabled("lunalib")` and calls `LunaSettings.getBoolean("demandIndicators", <id>)` for all three on every call, which is every frame for each market stack. LunaLib loads its settings on first use and returns null for an unknown field id, which would throw on unboxing, so a new setting needs its CSV row in the same commit. A changed setting applies on the next frame.
+`data/config/LunaSettings.csv` owns the ids, defaults and help text: `demandIndicators_show` (Show Trade Indicators, on), `demandIndicators_lowVis` (Low Impact Mode, off), `demandIndicators_invert` (Invert Indicators, off) and `demandIndicators_playerCargo` (Indicators On Your Cargo, a radio with `Off`, `Sell Hints` and `Always Show`, default `Off`). The header row's id is `IndEvo_header1`. There is no settings class and no cache: `getSetting(id, fallback)` checks `ModManagerAPI.isModEnabled("lunalib")` and calls `LunaSettings.getBoolean("demandIndicators", <id>)`, and `getArrowIconName` reads the radio with `LunaSettings.getString` the same way, on every call, which is every frame for each stack in a market dialog. LunaLib loads its settings on first use and returns null for an unknown field id, which would throw on unboxing, so a new setting needs its CSV row in the same commit. A changed setting applies on the next frame.
 
-LunaLib is optional (no dependency since `1.0.e`). Without it the three settings take their CSV defaults (show on, low impact off, invert off) and `LunaSettings` is never called.
+LunaLib is optional (no dependency since `1.0.e`). Without it the settings take the fallback passed to `getSetting`, which matches the CSV default and `LunaSettings` is never called.
 
 ### Sprites
 
-`data/config/settings.json` maps twelve `graphics.ui` keys to files: `demandIndicators_commodityExcess`, `demandIndicators_commodityDeficit` and their `_high` and `_low` variants in `graphics/ui/`, and the same six with an `_invert` suffix in `graphics/ui/inverted/`. Normal and `_low` sprites are 20 x 20 px, `_high` sprites 20 x 28 px. `getCommodityStackIconName` resolves all six names it may need with `getSpriteName` on every call. The folders predate the mod prefix and are shared with vanilla folder names; do not move the files, the keys are what code uses.
+`data/config/settings.json` maps twelve `graphics.ui` keys to files: `demandIndicators_commodityExcess`, `demandIndicators_commodityDeficit` and their `_high` and `_low` variants in `graphics/ui/`, and the same six with an `_invert` suffix in `graphics/ui/inverted/`. Normal and `_low` sprites are 20 x 20 px, `_high` sprites 20 x 28 px. `getCommodityStackIconName` resolves the one name it returns with `getSpriteName` on every call. The folders predate the mod prefix and are shared with vanilla folder names; do not move the files, the keys are what code uses.
 
 ### Build and checks
 
@@ -95,7 +95,7 @@ The IDE files (`.idea/`, `Demand Indicators.iml`, `demandindicators.iml`) are tr
 |---|---|
 | `demandIndicators` | Mod id, LunaLib mod id, Demand Indicators |
 | `demandindicators` | Java package and jar name |
-| `demandIndicators_show`, `demandIndicators_lowVis`, `demandIndicators_invert` | LunaLib field ids; players' values are stored under them |
+| `demandIndicators_show`, `demandIndicators_lowVis`, `demandIndicators_invert`, `demandIndicators_playerCargo` | LunaLib field ids; players' values are stored under them |
 
 ## Source owners
 
@@ -109,7 +109,7 @@ Use `rg --files jars/src/demandindicators` for the complete inventory.
 
 ## Contracts
 
-- `getRankIconName` runs inside rendering, once per market stack per frame. Keep it free of allocation heavy work and of anything that changes game state.
+- `getRankIconName` runs inside rendering, once per stack in a market dialog per frame. Keep it free of allocation heavy work and of anything that changes game state.
 - `getHandlingPriority` must claim exactly the stacks `getRankIconName` draws on. Claiming more hides other providers on stacks that get nothing back; `getIconName` only passes the commodity icon on, never the rank icon.
 - `getSubmarketFor` compares cargo by identity (`sub.getCargo() == stack.getCargo()`), the same way `PlayerFleetPersonnelTracker.getSubmarketFor` does.
 
