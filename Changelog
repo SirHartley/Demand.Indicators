@@ -8,6 +8,10 @@ None
 None
 
 --------------------------- Changelog -----------------------------
+1.0.h - UNRELEASED
+Added - Setting to show the arrows on your own cargo while docked (Off, Sell Hints, Always Show)
+Note - Sell Hints only marks goods the market has none of and pays above base price for
+
 1.0.g
 Adjusted - Updated for 0.98.5a
 Fixed - Arrows not showing when LunaLib is not installed
